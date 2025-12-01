@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InterviewAI - Configure Interview</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23FCD34D'/></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+            animation: fadeIn 0.5s ease-out;
+        }
+        .option-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .option-card.selected {
+            background: linear-gradient(135deg, #FEF3C7, #FCD34D);
+            border-color: #F59E0B;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-yellow-50 via-white to-orange-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center sm:h-16">
+                <div class="flex items-center gap-3">
+                    <div class="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full p-2">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">InterviewAI</span>
+                </div>
+                <div class="flex items-center gap-4 w-full justify-between sm:w-auto sm:justify-end">
+                    <button onclick="showSettings()" class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </button>
+                    <div class="flex items-center gap-2 pl-4 border-l border-gray-200">
+                        <div id="userAvatar" class="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-white font-bold text-sm"></div>
+                        <span id="userName" class="font-medium text-gray-700"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+        <div class="max-w-4xl mx-auto px-4 py-6 sm:py-8 w-full">
+        <!-- Progress Steps -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div id="progressBar" class="h-full bg-gradient-to-r from-yellow-400 to-orange-500 transition-all duration-500" style="width: 16.66%"></div>
+                </div>
+            </div>
+            <div class="flex flex-col gap-1 sm:flex-row sm:justify-between text-xs text-gray-500">
+                <span id="stepLabel">Step 1 of 6</span>
+                <span id="stepName">Domain</span>
+            </div>
+        </div>
+
+        <!-- Step Container -->
+        <div id="stepContainer" class="bg-white rounded-2xl shadow-xl p-6 sm:p-8 animate-fadeIn">
+            <!-- Steps will be dynamically inserted here -->
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6">
+            <button id="backBtn" onclick="prevStep()" class="hidden w-full sm:flex-1 px-6 py-3 bg-white border-2 border-gray-200 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition-all">
+                ← Back
+            </button>
+            <button id="nextBtn" onclick="nextStep()" class="w-full sm:flex-1 px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-xl font-semibold hover:from-yellow-500 hover:to-orange-600 transition-all shadow-lg">
+                Next Step →
+            </button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-8 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Settings</h2>
+                <button onclick="closeSettings()" class="p-2 hover:bg-gray-100 rounded-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Change Username -->
+            <div class="mb-8 p-6 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl border border-yellow-200">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="p-2 bg-yellow-400 rounded-lg">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="font-semibold text-gray-800">Change Username</h3>
+                </div>
+                <input type="text" id="newUsernameInput" placeholder="New username" 
+                    class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-yellow-400 focus:outline-none mb-3">
+                <button onclick="handleChangeUsername()" 
+                    class="w-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white py-2 rounded-xl font-semibold hover:from-yellow-500 hover:to-orange-600 transition-all">
+                    Update Username
+                </button>
+            </div>
+
+            <!-- Sign Out -->
+            <div class="p-6 bg-gradient-to-br from-red-50 to-rose-50 rounded-xl border border-red-200">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="p-2 bg-red-500 rounded-lg">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                        </svg>
+                    </div>
+                    <h3 class="font-semibold text-gray-800">Sign Out</h3>
+                </div>
+                <p class="text-sm text-gray-600 mb-3">You will be signed out from your account</p>
+                <button onclick="handleLogout()" 
+                    class="w-full bg-red-500 text-white py-2 rounded-xl font-semibold hover:bg-red-600 transition-all">
+                    Sign Out
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ UPDATE THIS WITH YOUR RENDER BACKEND URL
+        const API_BASE = 'https://app-int-view.onrender.com';
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAh2U2aL3Es_WmgoCSDs8bjsTwYA7mbZzA",
+            authDomain: "auth-e8594.firebaseapp.com",
+            projectId: "auth-e8594",
+            storageBucket: "auth-e8594.firebasestorage.app",
+            messagingSenderId: "889123809640",
+            appId: "1:889123809640:web:fa5560d10bba85c4900edd"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // Check authentication
+        let currentUser = null;
+        let authToken = null;
+
+        auth.onAuthStateChanged(async user => {
+            if (user) {
+                currentUser = user;
+                authToken = await user.getIdToken();
+                localStorage.setItem('authToken', authToken);
+                updateUserDisplay();
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+
+        function updateUserDisplay() {
+            const username = localStorage.getItem(`username_${currentUser.uid}`) || 'User';
+            const initials = username.charAt(0).toUpperCase();
+            document.getElementById('userAvatar').textContent = initials;
+            document.getElementById('userName').textContent = username;
+        }
+
+        // Interview Configuration
+        const config = {
+            domain: '',
+            role: '',
+            type: '',
+            difficulty: 'Intermediate',
+            duration: 15,
+            voice: 'male'
+        };
+
+        let currentStep = 0;
+        const totalSteps = 6;
+
+        const DOMAINS = [
+            { id: 'software', name: 'Software Engineering', icon: '💻', color: 'blue' },
+            { id: 'data', name: 'Data Science', icon: '📊', color: 'purple' },
+            { id: 'product', name: 'Product Management', icon: '💼', color: 'green' },
+            { id: 'design', name: 'Design', icon: '🎨', color: 'pink' },
+            { id: 'marketing', name: 'Marketing', icon: '📢', color: 'orange' },
+            { id: 'sales', name: 'Sales', icon: '📈', color: 'indigo' }
+        ];
+
+        const steps = [
+            {
+                title: 'Select Your Domain',
+                subtitle: 'Choose the field you want to practice',
+                render: () => {
+                    const html = `
+                        <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">${steps[currentStep].title}</h2>
+                        <p class="text-gray-600 mb-8">${steps[currentStep].subtitle}</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            ${DOMAINS.map(d => `
+                                <div onclick="selectOption('domain', '${d.id}', this)" 
+                                    class="option-card cursor-pointer p-6 border-2 border-gray-200 rounded-xl transition-all hover:border-yellow-400"
+                                    data-value="${d.id}">
+                                    <div class="text-4xl mb-3">${d.icon}</div>
+                                    <h3 class="font-semibold text-gray-800">${d.name}</h3>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    return html;
+                }
+            },
+            {
+                title: 'Enter Your Role',
+                subtitle: 'What position are you interviewing for?',
+                render: () => {
+                    return `
+                        <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">${steps[currentStep].title}</h2>
+                        <p class="text-gray-600 mb-8">${steps[currentStep].subtitle}</p>
+                        <div class="max-w-md mx-auto">
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                    </svg>
+                                </div>
+                                <input type="text" id="roleInput" value="${config.role}" 
+                                    onchange="config.role = this.value"
+                                    placeholder="e.g., Senior Software Engineer"
+                                    class="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:border-yellow-400 focus:outline-none text-lg">
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            {
+                title: 'Interview Type',
+                subtitle: 'Choose the type of interview',
+                render: () => {
+                    const types = [
+                        { id: 'Technical', icon: '🔧', desc: 'Focus on technical skills' },
+                        { id: 'Behavioral', icon: '💬', desc: 'Focus on soft skills' },
+                        { id: 'HR', icon: '👔', desc: 'General HR questions' },
+                        { id: 'Mixed', icon: '🎯', desc: 'Combination of all' }
+                    ];
+                    return `
+                        <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">${steps[currentStep].title}</h2>
+                        <p class="text-gray-600 mb-8">${steps[currentStep].subtitle}</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            ${types.map(t => `
+                                <div onclick="selectOption('type', '${t.id}', this)" 
+                                    class="option-card cursor-pointer p-6 border-2 border-gray-200 rounded-xl transition-all"
+                                    data-value="${t.id}">
+                                    <div class="text-4xl mb-3">${t.icon}</div>
+                                    <h3 class="font-semibold text-gray-800 mb-1">${t.id}</h3>
+                                    <p class="text-sm text-gray-600">${t.desc}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+            },
+            {
+                title: 'Difficulty Level',
+                subtitle: 'How challenging should the questions be?',
+                render: () => {
+                    const levels = ['Beginner', 'Intermediate', 'Advanced'];
+                    return `
+                        <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">${steps[currentStep].title}</h2>
+                        <p class="text-gray-600 mb-8">${steps[currentStep].subtitle}</p>
+                        <div class="max-w-md mx-auto">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
+                                ${levels.map(level => `
+                                    <div onclick="selectOption('difficulty', '${level}', this)" 
+                                        class="option-card cursor-pointer p-4 border-2 border-gray-200 rounded-xl text-center font-semibold transition-all ${config.difficulty === level ? 'selected' : ''}"
+                                        data-value="${level}">
+                                        ${level}
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div class="text-center p-6 bg-gray-50 rounded-xl">
+                                <p class="text-sm text-gray-600 mb-2">Selected Level:</p>
+                                <p class="text-2xl font-bold text-gray-800" id="difficultyDisplay">${config.difficulty}</p>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            {
+                title: 'Interview Duration',
+                subtitle: 'How long should the interview last?',
+                render: () => {
+                    return `
+                        <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">${steps[currentStep].title}</h2>
+                        <p class="text-gray-600 mb-8">${steps[currentStep].subtitle}</p>
+                        <div class="max-w-md mx-auto">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
+                                ${[10, 15, 30].map(mins => `
+                                    <div onclick="selectOption('duration', ${mins}, this)" 
+                                        class="option-card cursor-pointer p-6 border-2 border-gray-200 rounded-xl text-center transition-all ${config.duration === mins ? 'selected' : ''}"
+                                        data-value="${mins}">
+                                        <div class="text-3xl font-bold text-gray-800 mb-1">${mins}</div>
+                                        <div class="text-sm text-gray-600">minutes</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div class="flex items-center justify-center gap-3 p-6 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl border border-yellow-200">
+                                <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <div>
+                                    <p class="text-sm text-gray-600">Interview Duration</p>
+                                    <p class="text-2xl font-bold text-gray-800" id="durationDisplay">${config.duration} minutes</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            {
+                title: 'Voice Preference',
+                subtitle: 'Choose the interviewer voice',
+                render: () => {
+                    return `
+                        <h2 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">${steps[currentStep].title}</h2>
+                        <p class="text-gray-600 mb-8">${steps[currentStep].subtitle}</p>
+                        <div class="max-w-md mx-auto">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div onclick="selectOption('voice', 'male', this)" 
+                                    class="option-card cursor-pointer p-8 border-2 border-gray-200 rounded-xl text-center transition-all ${config.voice === 'male' ? 'selected' : ''}"
+                                    data-value="male">
+                                    <div class="text-5xl mb-4">👨‍💼</div>
+                                    <h3 class="font-semibold text-gray-800 text-lg">Male Voice</h3>
+                                </div>
+                                <div onclick="selectOption('voice', 'female', this)" 
+                                    class="option-card cursor-pointer p-8 border-2 border-gray-200 rounded-xl text-center transition-all ${config.voice === 'female' ? 'selected' : ''}" 
+                                    data-value="female" style="position: relative;">
+                                    <span style="position: absolute; top: 12px; right: 12px; font-size: 1.5rem; display: ${config.voice === 'female' ? 'block' : 'none'};">✔️</span>
+                                    <div class="text-5xl mb-4">👩‍💼</div>
+                                    <h3 class="font-semibold text-gray-800 text-lg">Female Voice</h3>
+                                </div>
+
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        ];
+
+        function renderStep() {
+            const container = document.getElementById('stepContainer');
+            container.innerHTML = steps[currentStep].render();
+            container.classList.remove('animate-fadeIn');
+            void container.offsetWidth;
+            container.classList.add('animate-fadeIn');
+
+            // Update progress
+            const progress = ((currentStep + 1) / totalSteps) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+            document.getElementById('stepLabel').textContent = `Step ${currentStep + 1} of ${totalSteps}`;
+            
+            const stepNames = ['Domain', 'Role', 'Type', 'Difficulty', 'Duration', 'Voice'];
+            document.getElementById('stepName').textContent = stepNames[currentStep];
+
+            // Update buttons
+            document.getElementById('backBtn').classList.toggle('hidden', currentStep === 0);
+            const nextBtn = document.getElementById('nextBtn');
+            if (currentStep === totalSteps - 1) {
+                nextBtn.textContent = 'Start Interview 🚀';
+                nextBtn.classList.add('bg-gradient-to-r', 'from-green-500', 'to-emerald-600');
+                nextBtn.classList.remove('from-yellow-400', 'to-orange-500');
+            } else {
+                nextBtn.textContent = 'Next Step →';
+                nextBtn.classList.add('from-yellow-400', 'to-orange-500');
+                nextBtn.classList.remove('from-green-500', 'to-emerald-600');
+            }
+
+            // Restore role input value
+            if (currentStep === 1) {
+                setTimeout(() => {
+                    const roleInput = document.getElementById('roleInput');
+                    if (roleInput) roleInput.value = config.role;
+                }, 0);
+            }
+        }
+
+        function selectOption(key, value, element) {
+            config[key] = value;
+            
+            // Visual feedback
+            const parent = element.parentElement;
+            parent.querySelectorAll('.option-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            element.classList.add('selected');
+
+            // Update displays
+            if (key === 'difficulty') {
+                const display = document.getElementById('difficultyDisplay');
+                if (display) display.textContent = value;
+            } else if (key === 'duration') {
+                const display = document.getElementById('durationDisplay');
+                if (display) display.textContent = value + ' minutes';
+            }
+
+            console.log('Config updated:', config);
+        }
+
+        function nextStep() {
+            // Validation
+            if (currentStep === 0 && !config.domain) {
+                alert('Please select a domain');
+                return;
+            }
+            if (currentStep === 1 && !config.role.trim()) {
+                alert('Please enter a role');
+                return;
+            }
+            if (currentStep === 2 && !config.type) {
+                alert('Please select an interview type');
+                return;
+            }
+
+            if (currentStep < totalSteps - 1) {
+                currentStep++;
+                renderStep();
+            } else {
+                startInterview();
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 0) {
+                currentStep--;
+                renderStep();
+            }
+        }
+
+        async function startInterview() {
+            // Save role if on that step
+            const roleInput = document.getElementById('roleInput');
+            if (roleInput) config.role = roleInput.value.trim();
+
+            if (!config.domain || !config.role || !config.type) {
+                alert('Please complete all steps');
+                return;
+            }
+
+            console.log('Starting interview with config:', config);
+
+            // Store config and redirect
+            localStorage.setItem('interviewConfig', JSON.stringify(config));
+            window.location.href = 'chat.html';
+        }
+
+        // Settings functions
+        function showSettings() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        function handleChangeUsername() {
+            const newUsername = document.getElementById('newUsernameInput').value.trim();
+            if (!newUsername) {
+                alert('Please enter a new username');
+                return;
+            }
+            localStorage.setItem(`username_${currentUser.uid}`, newUsername);
+            updateUserDisplay();
+            alert('Username updated successfully!');
+            closeSettings();
+        }
+
+        async function handleLogout() {
+            if (confirm('Are you sure you want to sign out?')) {
+                try {
+                    await auth.signOut();
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('interviewConfig');
+                    localStorage.removeItem('interviewSummary');
+                    localStorage.removeItem('userId');
+                    localStorage.removeItem('userEmail');
+                    window.location.href = 'index.html';
+                } catch (error) {
+                    alert('Error signing out: ' + error.message);
+                }
+            }
+        }
+
+        // Initialize
+        renderStep();
+    </script>
+</body>
+</html>

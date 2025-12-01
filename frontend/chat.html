@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InterviewAI - Interview Session</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23FCD34D'/></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <style>
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .animate-bounce {
+            animation: bounce 1s infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        .recording-pulse::before {
+            content: '';
+            position: absolute;
+            inset: -8px;
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.4);
+            animation: pulse-ring 1.5s ease-out infinite;
+        }
+        .message-slide {
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <div class="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full p-2">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-gray-800" id="roleTitle">Interview Session</h1>
+                        <p class="text-sm text-gray-600" id="interviewMeta">Loading...</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <!-- Timer -->
+                    <div id="timer" class="px-4 py-2 bg-green-100 text-green-700 rounded-lg font-mono font-bold flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span id="timerDisplay">15:00</span>
+                    </div>
+                    <!-- Voice Toggle -->
+                    <button id="voiceToggle" onclick="toggleVoice()" class="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors">
+                        <svg id="voiceOnIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+                        </svg>
+                        <svg id="voiceOffIcon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>
+                        </svg>
+                    </button>
+                    <!-- End Interview -->
+                    <button onclick="endInterview()" class="px-4 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors">
+                        End Interview
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages Container -->
+    <div class="max-w-4xl mx-auto px-4 py-6 pb-32">
+        <div id="messagesContainer" class="space-y-4">
+            <!-- Messages will be inserted here -->
+        </div>
+        
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="hidden message-slide">
+            <div class="flex justify-start">
+                <div class="bg-white rounded-2xl px-6 py-4 shadow-sm border border-gray-200">
+                    <div class="flex gap-2">
+                        <div class="w-2 h-2 bg-yellow-500 rounded-full animate-bounce" style="animation-delay: 0ms"></div>
+                        <div class="w-2 h-2 bg-yellow-500 rounded-full animate-bounce" style="animation-delay: 150ms"></div>
+                        <div class="w-2 h-2 bg-yellow-500 rounded-full animate-bounce" style="animation-delay: 300ms"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+        <div class="max-w-4xl mx-auto px-4 py-4">
+            <!-- Recording Status -->
+            <div id="recordingStatus" class="hidden text-center mb-3 text-sm font-medium text-red-600 flex items-center justify-center gap-2">
+                <div class="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
+                <span>Recording... Click mic to stop</span>
+            </div>
+            
+            <!-- Input Row -->
+            <div class="flex gap-3">
+                <!-- Mic Button -->
+                <button id="micBtn" onclick="toggleRecording()" 
+                    class="relative p-4 bg-gradient-to-br from-yellow-400 to-orange-500 text-white rounded-full hover:from-yellow-500 hover:to-orange-600 transition-all shadow-lg disabled:opacity-50">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                    </svg>
+                </button>
+                
+                <!-- Text Input -->
+                <input type="text" id="messageInput" placeholder="Type your answer or use voice input..." 
+                    class="flex-1 px-6 py-4 border-2 border-gray-200 rounded-2xl focus:border-yellow-400 focus:outline-none text-lg"
+                    onkeypress="if(event.key === 'Enter') sendMessage()">
+                
+                <!-- Send Button -->
+                <button onclick="sendMessage()" id="sendBtn"
+                    class="px-6 py-4 bg-gradient-to-br from-yellow-400 to-orange-500 text-white rounded-2xl font-semibold hover:from-yellow-500 hover:to-orange-600 transition-all shadow-lg disabled:opacity-50">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <p class="text-xs text-gray-500 text-center mt-3">
+                💡 Click mic to start/stop recording • Press Enter to send
+            </p>
+        </div>
+    </div>
+
+    <!-- Hidden Audio Element -->
+    <audio id="audioPlayer" class="hidden"></audio>
+
+    <script>
+        // ⚠️ UPDATE THIS WITH YOUR RENDER BACKEND URL
+        const API_BASE = 'https://app-int-view.onrender.com';
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAh2U2aL3Es_WmgoCSDs8bjsTwYA7mbZzA",
+            authDomain: "auth-e8594.firebaseapp.com",
+            projectId: "auth-e8594",
+            storageBucket: "auth-e8594.firebasestorage.app",
+            messagingSenderId: "889123809640",
+            appId: "1:889123809640:web:fa5560d10bba85c4900edd"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // State
+        let currentUser = null;
+        let authToken = null;
+        let sessionId = null;
+        let config = null;
+        let messages = [];
+        let isRecording = false;
+        let isLoading = false;
+        let voiceEnabled = true;
+        let audioPlaying = false;
+        let recognitionInstance = null;
+        let timeRemaining = 0;
+        let timerInterval = null;
+
+        // Check authentication
+        auth.onAuthStateChanged(async user => {
+            if (user) {
+                currentUser = user;
+                authToken = await user.getIdToken();
+                initializeInterview();
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+
+        // Initialize Speech Recognition
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognitionInstance = new SpeechRecognition();
+            recognitionInstance.continuous = true;
+            recognitionInstance.interimResults = false;
+            recognitionInstance.lang = 'en-US';
+            console.log('✅ Speech recognition initialized');
+        } else {
+            console.warn('⚠️ Speech recognition not supported');
+        }
+
+        async function initializeInterview() {
+            // Load config
+            config = JSON.parse(localStorage.getItem('interviewConfig'));
+            if (!config) {
+                alert('No interview configuration found');
+                window.location.href = 'app.html';
+                return;
+            }
+
+            // Update UI
+            document.getElementById('roleTitle').textContent = config.role;
+            document.getElementById('interviewMeta').textContent = `${config.type} • ${config.difficulty}`;
+            
+            // Set timer
+            timeRemaining = config.duration * 60;
+            updateTimerDisplay();
+            startTimer();
+
+            // Start session
+            await startSession();
+        }
+
+        async function startSession() {
+            try {
+                showLoading(true);
+                
+                const response = await fetch(`${API_BASE}/api/start-session`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        domain: config.domain,
+                        role: config.role,
+                        interview_type: config.type,
+                        difficulty: config.difficulty,
+                        duration: config.duration,
+                        voice_style: config.voice
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                sessionId = data.session_id;
+                
+                // Add first message
+                addMessage('assistant', data.first_question.text_response, data.first_question.voice_response);
+                
+                // Play audio if enabled
+                if (voiceEnabled && data.first_question.voice_response) {
+                    await playTTS(data.first_question.voice_response);
+                }
+                
+                showLoading(false);
+            } catch (error) {
+                console.error('Start session error:', error);
+                alert(`Failed to start interview: ${error.message}\n\nPlease check:\n1. Backend URL is correct\n2. Backend is running\n3. API keys are configured`);
+                showLoading(false);
+            }
+        }
+
+        function addMessage(role, text, voice = null) {
+            const message = { role, text, voice };
+            messages.push(message);
+            
+            const container = document.getElementById('messagesContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message-slide';
+            
+            if (role === 'user') {
+                messageDiv.innerHTML = `
+                    <div class="flex justify-end">
+                        <div class="max-w-2xl bg-gradient-to-br from-yellow-400 to-orange-500 text-white rounded-2xl px-6 py-4 shadow-lg">
+                            <p class="whitespace-pre-wrap">${escapeHtml(text)}</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                messageDiv.innerHTML = `
+                    <div class="flex justify-start">
+                        <div class="max-w-2xl bg-white rounded-2xl px-6 py-4 shadow-sm border border-gray-200">
+                            <div class="flex items-start gap-3">
+                                <p class="flex-1 whitespace-pre-wrap">${escapeHtml(text)}</p>
+                                ${voice && voiceEnabled ? `
+                                    <button onclick="replayAudio('${escapeHtml(voice)}')" 
+                                        class="flex-shrink-0 p-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+                                        </svg>
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.appendChild(messageDiv);
+            messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            
+            if (!text || isLoading) return;
+            
+            input.value = '';
+            addMessage('user', text);
+            showLoading(true);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        user_message: text,
+                        voice_style: config.voice
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                addMessage('assistant', data.text_response, data.voice_response);
+                
+                // Check if interview ended
+                if (data.end) {
+                    clearInterval(timerInterval);
+                    localStorage.setItem('interviewSummary', JSON.stringify(data));
+                    setTimeout(() => {
+                        window.location.href = 'results.html';
+                    }, 1000);
+                } else if (voiceEnabled && data.voice_response) {
+                    await playTTS(data.voice_response);
+                }
+                
+                showLoading(false);
+            } catch (error) {
+                console.error('Send message error:', error);
+                alert(`Failed to send message: ${error.message}`);
+                showLoading(false);
+            }
+        }
+
+        function toggleRecording() {
+            if (!recognitionInstance) {
+                alert('Speech recognition not supported.\n\nPlease use Chrome or Edge browser.\n\nYou can still type your answers!');
+                return;
+            }
+
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        function startRecording() {
+            if (!recognitionInstance) return;
+            
+            try {
+                isRecording = true;
+                document.getElementById('recordingStatus').classList.remove('hidden');
+                document.getElementById('micBtn').classList.add('recording-pulse', 'bg-red-500');
+                
+                let lastProcessedIndex = -1;
+                
+                recognitionInstance.onresult = (event) => {
+                    for (let i = lastProcessedIndex + 1; i < event.results.length; i++) {
+                        if (event.results[i].isFinal) {
+                            const transcript = event.results[i][0].transcript.trim();
+                            if (transcript) {
+                                const input = document.getElementById('messageInput');
+                                input.value = input.value ? input.value + ' ' + transcript : transcript;
+                            }
+                            lastProcessedIndex = i;
+                        }
+                    }
+                };
+
+                recognitionInstance.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                    if (event.error === 'not-allowed') {
+                        alert('Microphone access denied.\n\nPlease allow microphone access and try again.');
+                    }
+                    stopRecording();
+                };
+
+                recognitionInstance.onend = () => {
+                    stopRecording();
+                };
+
+                recognitionInstance.start();
+            } catch (error) {
+                console.error('Recording error:', error);
+                stopRecording();
+            }
+        }
+
+        function stopRecording() {
+            if (recognitionInstance && isRecording) {
+                recognitionInstance.stop();
+            }
+            isRecording = false;
+            document.getElementById('recordingStatus').classList.add('hidden');
+            document.getElementById('micBtn').classList.remove('recording-pulse', 'bg-red-500');
+        }
+
+        async function playTTS(text) {
+            if (!voiceEnabled || audioPlaying) return;
+            
+            try {
+                audioPlaying = true;
+                
+                const response = await fetch(`${API_BASE}/api/tts`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        voice_style: config.voice
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`TTS failed: ${response.status}`);
+                }
+
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                
+                const audio = document.getElementById('audioPlayer');
+                audio.src = audioUrl;
+                audio.onended = () => {
+                    audioPlaying = false;
+                    URL.revokeObjectURL(audioUrl);
+                };
+                await audio.play();
+            } catch (error) {
+                console.error('TTS error:', error);
+                audioPlaying = false;
+            }
+        }
+
+        function replayAudio(text) {
+            if (!audioPlaying) {
+                playTTS(text);
+            }
+        }
+
+        function toggleVoice() {
+            voiceEnabled = !voiceEnabled;
+            const onIcon = document.getElementById('voiceOnIcon');
+            const offIcon = document.getElementById('voiceOffIcon');
+            const toggleBtn = document.getElementById('voiceToggle');
+            
+            if (voiceEnabled) {
+                onIcon.classList.remove('hidden');
+                offIcon.classList.add('hidden');
+                toggleBtn.classList.remove('bg-gray-100', 'text-gray-700');
+                toggleBtn.classList.add('bg-green-100', 'text-green-700');
+            } else {
+                onIcon.classList.add('hidden');
+                offIcon.classList.remove('hidden');
+                toggleBtn.classList.remove('bg-green-100', 'text-green-700');
+                toggleBtn.classList.add('bg-gray-100', 'text-gray-700');
+            }
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateTimerDisplay();
+                
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    endInterview(true);
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            const display = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('timerDisplay').textContent = display;
+            
+            const timer = document.getElementById('timer');
+            if (timeRemaining < 60) {
+                timer.className = 'px-4 py-2 bg-red-100 text-red-700 rounded-lg font-mono font-bold flex items-center gap-2';
+            } else if (timeRemaining < 300) {
+                timer.className = 'px-4 py-2 bg-orange-100 text-orange-700 rounded-lg font-mono font-bold flex items-center gap-2';
+            }
+        }
+
+        async function endInterview(timeUp = false) {
+            if (!timeUp && !confirm('Are you sure you want to end the interview?')) {
+                return;
+            }
+            
+            clearInterval(timerInterval);
+            showLoading(true);
+            
+            const message = timeUp ? '[END_INTERVIEW_TIME_UP]' : '[END_INTERVIEW_MANUAL]';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        user_message: message,
+                        voice_style: config.voice
+                    })
+                });
+
+                const data = await response.json();
+                localStorage.setItem('interviewSummary', JSON.stringify(data));
+                window.location.href = 'results.html';
+            } catch (error) {
+                console.error('End interview error:', error);
+                alert('Failed to end interview properly');
+                showLoading(false);
+            }
+        }
+
+        function showLoading(show) {
+            isLoading = show;
+            document.getElementById('loadingIndicator').classList.toggle('hidden', !show);
+            document.getElementById('sendBtn').disabled = show;
+            document.getElementById('micBtn').disabled = show;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
